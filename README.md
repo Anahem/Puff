@@ -91,7 +91,15 @@ Log what was spent and who paid. Categories: **ganja**, **papers**, **misc**. Th
 
 ## Accessing from Other Devices
 
-To use the app from your phone or other devices on the same network, find your PC's local IP address and visit `http://192.168.x.x:3000`. For remote access from anywhere, install [Tailscale](https://tailscale.com) on your PC — your squad can reach the app at your Tailscale IP.
+**Same network (local):** Find your PC's local IP address and visit `http://192.168.x.x:3000` from any phone or device on the same Wi-Fi. Works great for tracking joints in real time with the squad.
+
+**From anywhere (Tailscale):** [Tailscale](https://tailscale.com) is a free personal VPN that lets you access your home PC from anywhere in the world as if you were on the same network. No port forwarding, no router config, no subscription needed for personal use.
+
+1. Install Tailscale on the PC running puff-app — [tailscale.com/download](https://tailscale.com/download)
+2. Install Tailscale on your phone (iOS / Android) and sign in with the same account
+3. That's it — visit `http://100.x.x.x:3000` (your PC's Tailscale IP) from your phone from anywhere
+
+Your squad can each install Tailscale and join your Tailscale network (you'll need to approve them) to access the app remotely. Alternatively, just keep the server on one person's machine and use it on local Wi-Fi when you're all together.
 
 ## Data
 
