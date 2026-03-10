@@ -1,0 +1,51 @@
+<%- include('partials/head', { pageTitle: 'Members' }) %>
+<%- include('partials/nav') %>
+
+<main class="container">
+
+  <div class="page-header">
+    <h1>Members</h1>
+    <p class="page-subtitle">All-time stats across <%= sessionCount %> closed session<%= sessionCount !== 1 ? 's' : '' %></p>
+  </div>
+
+  <% if (memberStats.length === 0) { %>
+    <div class="empty-state">
+      <p>No session history yet.</p>
+      <p class="text-muted" style="font-size:0.875rem">Close a session from the dashboard to start building member history.</p>
+    </div>
+  <% } else { %>
+
+  <div class="history-table-wrap">
+    <table class="history-table members-history-table">
+      <thead>
+        <tr>
+          <th>Member</th>
+          <th>Sessions</th>
+          <th>Total joints</th>
+          <th>Avg / session</th>
+          <th>Total paid</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% memberStats.forEach(m => { %>
+        <% const avg = m.sessions > 0 ? parseFloat((m.totalJoints / m.sessions).toFixed(2)) : 0; %>
+        <tr>
+          <td>
+            <span class="member-history-name"><%= m.name %></span>
+            <% if (m.is_guest) { %><span class="badge badge-guest">guest</span><% } %>
+          </td>
+          <td class="mono"><%= m.sessions %></td>
+          <td class="mono"><%= parseFloat(m.totalJoints.toFixed(2)) %></td>
+          <td class="mono text-muted"><%= avg %></td>
+          <td class="mono">£<%= m.totalPaid.toFixed(2) %></td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+
+  <% } %>
+
+</main>
+
+<%- include('partials/foot') %>

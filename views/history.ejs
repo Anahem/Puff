@@ -1,0 +1,161 @@
+<%- include('partials/head', { pageTitle: 'History' }) %>
+<%- include('partials/nav') %>
+
+<main class="container">
+
+  <% if (ok) { %>
+    <div class="flash flash-ok">Session closed and archived.</div>
+  <% } %>
+
+  <div class="page-header">
+    <h1>Session History</h1>
+  </div>
+
+  <% if (history.length === 0) { %>
+    <div class="empty-state">
+      <p>No past sessions yet.</p>
+      <p class="text-muted" style="font-size:0.875rem">Close a session from the dashboard to archive it here.</p>
+    </div>
+  <% } else { %>
+    <div class="history-list">
+      <% history.forEach((s, i) => { %>
+      <details class="history-card" <%= i === 0 ? 'open' : '' %>>
+        <summary class="history-summary">
+          <div class="history-summary-left">
+            <span class="history-dates">
+              <%= new Date(s.start_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) %>
+              →
+              <%= new Date(s.end_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) %>
+            </span>
+          </div>
+          <div class="history-summary-stats">
+            <%# If actual differs from total, show both; otherwise just show total %>
+            <% const hasGuest = s.actual_joints != null && parseFloat(s.actual_joints) !== parseFloat(s.total_joints); %>
+            <% if (hasGuest) { %>
+              <span class="history-stat">
+                <span class="history-stat-label">Joints (self)</span>
+                <span class="mono"><%= parseFloat(s.actual_joints).toFixed(2) %></span>
+              </span>
+              <span class="history-stat">
+                <span class="history-stat-label">Joints (total)</span>
+                <span class="mono history-stat-dim"><%= parseFloat(s.total_joints).toFixed(2) %></span>
+              </span>
+            <% } else { %>
+              <span class="history-stat"><span class="history-stat-label">Joints</span> <span class="mono"><%= parseFloat(s.total_joints).toFixed(2) %></span></span>
+            <% } %>
+            <% if (hasGuest) { %>
+              <span class="history-stat">
+                <span class="history-stat-label">Cost (self)</span>
+                <span class="mono">£<%= parseFloat(s.actual_expenses).toFixed(2) %></span>
+              </span>
+              <span class="history-stat">
+                <span class="history-stat-label">Cost (total)</span>
+                <span class="mono history-stat-dim">£<%= parseFloat(s.total_expenses).toFixed(2) %></span>
+              </span>
+            <% } else { %>
+              <span class="history-stat"><span class="history-stat-label">Total</span> <span class="mono">£<%= parseFloat(s.total_expenses).toFixed(2) %></span></span>
+            <% } %>
+            <span class="history-stat"><span class="history-stat-label">£/joint</span> <span class="mono">£<%= parseFloat(s.price_per_joint).toFixed(2) %></span></span>
+            <span class="history-stat"><span class="history-stat-label">Members</span> <span class="mono"><%= s.active_members %></span></span>
+          </div>
+        </summary>
+
+        <div class="history-body">
+
+          <%# Breakdown — iterate dynamically so custom categories show %>
+          <% if (Object.keys(s.breakdown).length > 0) { %>
+          <div class="history-section">
+            <h3 class="history-section-title">Breakdown</h3>
+            <div class="history-breakdown">
+              <% Object.entries(s.breakdown).forEach(([cat, total]) => { %>
+              <div class="breakdown-chip">
+                <span class="breakdown-label"><%= cat.charAt(0).toUpperCase() + cat.slice(1) %></span>
+                <span class="breakdown-val mono">£<%= parseFloat(total).toFixed(2) %></span>
+              </div>
+              <% }) %>
+            </div>
+          </div>
+          <% } %>
+
+          <%# Member data %>
+          <% if (s.member_data && s.member_data.length > 0) { %>
+          <%
+            // Build paid-per-member map from expense snapshot (fallback for old records)
+            const _paid = {};
+            (s.expense_data || []).forEach(e => {
+              _paid[e.member_name] = (_paid[e.member_name] || 0) + e.amount;
+            });
+          %>
+          <div class="history-section">
+            <h3 class="history-section-title">Members</h3>
+            <div class="history-table-wrap">
+              <table class="history-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Joints</th>
+                    <th>Balance</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% s.member_data.forEach(m => { %>
+                  <%
+                    // Use stored netOwed if available; otherwise recalculate from snapshot data
+                    const _netOwed = (m.netOwed !== undefined)
+                      ? m.netOwed
+                      : parseFloat((m.joints * s.price_per_joint - (_paid[m.name] || 0)).toFixed(2));
+                  %>
+                  <tr>
+                    <td><%= m.name %><% if (m.is_guest) { %> <span class="badge badge-guest">guest</span><% } %></td>
+                    <td class="mono"><%= parseFloat(m.joints).toFixed(2) %></td>
+                    <td class="mono <% if (_netOwed > 0.005) { %>balance-owes<% } else if (_netOwed < -0.005) { %>balance-owed<% } else { %>balance-even<% } %>">
+                      <% if (_netOwed > 0.005) { %>Owes £<%= _netOwed.toFixed(2) %>
+                      <% } else if (_netOwed < -0.005) { %>Owed £<%= Math.abs(_netOwed).toFixed(2) %>
+                      <% } else { %>Even<% } %>
+                    </td>
+                  </tr>
+                  <% }) %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <% } %>
+
+          <%# Expense data %>
+          <% if (s.expense_data && s.expense_data.length > 0) { %>
+          <div class="history-section">
+            <h3 class="history-section-title">Expenses (<%= s.expense_data.length %>)</h3>
+            <div class="history-table-wrap">
+              <table class="history-table">
+                <thead>
+                  <tr>
+                    <th>Who</th>
+                    <th>Category</th>
+                    <th>Amount</th>
+                    <th>Memo</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% s.expense_data.forEach(e => { %>
+                  <tr>
+                    <td><%= e.member_name %></td>
+                    <td><span class="expense-cat cat-<%= e.category %>"><%= e.category %></span></td>
+                    <td class="mono">£<%= parseFloat(e.amount).toFixed(2) %></td>
+                    <td class="text-muted"><%= e.memo || '—' %></td>
+                  </tr>
+                  <% }) %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <% } %>
+
+        </div>
+      </details>
+      <% }) %>
+    </div>
+  <% } %>
+
+</main>
+
+<%- include('partials/foot') %>

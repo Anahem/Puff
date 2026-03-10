@@ -1,0 +1,166 @@
+<%- include('partials/head', { pageTitle: 'Expenses' }) %>
+<%- include('partials/nav') %>
+
+<main class="container">
+
+  <%# Flash messages %>
+  <% if (ok) { %>
+    <div class="flash flash-ok">Saved.</div>
+  <% } %>
+  <% if (err) { %>
+    <div class="flash flash-err">⚠ <%= err %></div>
+  <% } %>
+
+  <%# Page header + breakdown totals %>
+  <div class="page-header">
+    <h1>Expenses</h1>
+    <p class="page-subtitle">
+      Total this session: <strong class="mono">£<%= totalExpenses %></strong>
+      <% if (Object.keys(breakdown).length > 0) { %>
+        &nbsp;·&nbsp;
+        <% Object.entries(breakdown).forEach(([cat, total], i) => { %>
+          <%= cat.charAt(0).toUpperCase() + cat.slice(1) %> <span class="mono">£<%= parseFloat(total).toFixed(2) %></span>
+          <% if (i < Object.keys(breakdown).length - 1) { %>&nbsp;&nbsp;<% } %>
+        <% }) %>
+      <% } %>
+    </p>
+  </div>
+
+  <%# Add expense form %>
+  <div class="card">
+    <h2 class="card-title">Log expense</h2>
+    <form action="/expenses" method="POST" class="expense-form">
+      <div class="form-row">
+        <div class="form-group form-group-grow">
+          <label for="member_name">Who paid</label>
+          <select name="member_name" id="member_name" class="input-full" required>
+            <option value="">Select member…</option>
+            <% members.forEach(m => { %>
+              <option value="<%= m.name %>"><%= m.name %></option>
+            <% }) %>
+          </select>
+        </div>
+        <div class="form-group form-group-sm">
+          <label for="category">Category</label>
+          <select name="category" id="category" class="input-full" required>
+            <option value="">Category…</option>
+            <% categories.forEach(c => { %>
+              <option value="<%= c.name %>"><%= c.name.charAt(0).toUpperCase() + c.name.slice(1) %></option>
+            <% }) %>
+          </select>
+        </div>
+        <div class="form-group form-group-sm">
+          <label for="amount">Amount (£)</label>
+          <input
+            type="number"
+            id="amount"
+            name="amount"
+            step="0.01"
+            min="0.01"
+            placeholder="0.00"
+            class="input-full"
+            required
+          >
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="memo">Memo <span class="optional">(optional)</span></label>
+        <input
+          type="text"
+          id="memo"
+          name="memo"
+          placeholder="What was it for?"
+          class="input-full"
+          maxlength="120"
+        >
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Add expense</button>
+      </div>
+    </form>
+  </div>
+
+  <%# Expense list %>
+  <% if (expenses.length === 0) { %>
+    <div class="empty-state" style="padding: 2rem 0">
+      <p>No expenses logged this session.</p>
+    </div>
+  <% } else { %>
+    <div class="expense-list">
+      <% expenses.forEach(e => { %>
+      <div class="expense-row">
+        <span class="expense-who"><%= e.member_name %></span>
+        <span class="expense-cat cat-<%= e.category %>"><%= e.category %></span>
+        <span class="expense-amount mono">£<%= parseFloat(e.amount).toFixed(2) %></span>
+        <span class="expense-memo"><%= e.memo || '' %></span>
+        <span class="expense-time">
+          <%= new Date(e.created_at).toLocaleString('en-GB', {
+            day: 'numeric', month: 'short',
+            hour: '2-digit', minute: '2-digit'
+          }) %>
+        </span>
+      </div>
+      <% }) %>
+    </div>
+  <% } %>
+
+  <%# Category manager %>
+  <details class="cat-manager-details">
+    <summary class="cat-manager-toggle">
+      <span>Manage categories</span>
+      <span class="cat-manager-count"><%= categories.length %></span>
+    </summary>
+
+    <div class="cat-manager-body">
+
+      <%# Existing categories %>
+      <% categories.forEach(cat => { %>
+      <div class="cat-manager-row">
+        <span class="expense-cat cat-<%= cat.name %>"><%= cat.name %></span>
+
+        <%# Inline rename form %>
+        <form action="/categories/<%= cat.id %>/rename" method="POST" class="cat-rename-form">
+          <input
+            type="text"
+            name="name"
+            value="<%= cat.name %>"
+            class="input-full cat-rename-input"
+            maxlength="30"
+            required
+            autocomplete="off"
+          >
+          <button type="submit" class="btn btn-sm">Rename</button>
+        </form>
+
+        <%# Delete %>
+        <form
+          action="/categories/<%= cat.id %>/delete"
+          method="POST"
+          class="cat-delete-form"
+          onsubmit="return confirm('Delete category \'<%= cat.name %>\'? Only possible if no current expenses use it.')"
+        >
+          <button type="submit" class="btn-icon" title="Delete category">×</button>
+        </form>
+      </div>
+      <% }) %>
+
+      <%# Add new category %>
+      <form action="/categories" method="POST" class="cat-add-form">
+        <input
+          type="text"
+          name="name"
+          placeholder="New category name…"
+          class="input-full"
+          maxlength="30"
+          required
+          autocomplete="off"
+        >
+        <button type="submit" class="btn btn-primary btn-sm">+ Add</button>
+      </form>
+
+    </div>
+  </details>
+
+</main>
+
+<%- include('partials/foot') %>

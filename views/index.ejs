@@ -1,0 +1,224 @@
+<%- include('partials/head', { pageTitle: 'Dashboard' }) %>
+<%- include('partials/nav') %>
+
+<main class="container">
+
+  <%# Flash messages %>
+  <% if (ok) { %>
+    <div class="flash flash-ok">Done.</div>
+  <% } %>
+  <% if (err) { %>
+    <div class="flash flash-err">⚠ <%= err %></div>
+  <% } %>
+
+  <%# Squad summary bar %>
+  <div class="squad-bar">
+    <div class="stat-chip stat-chip-primary">
+      <span class="stat-label">Joints</span>
+      <span class="stat-value mono"><%= parseFloat(totalJoints.toFixed(2)) %></span>
+    </div>
+    <div class="stat-chip stat-chip-primary">
+      <span class="stat-label">£/joint</span>
+      <span class="stat-value mono">£<%= pricePerJoint %></span>
+    </div>
+    <% if (Object.keys(breakdown).length > 0) { %>
+    <div class="stat-divider"></div>
+    <% Object.entries(breakdown).forEach(([cat, total]) => { %>
+    <div class="stat-chip">
+      <span class="stat-label"><%= cat.charAt(0).toUpperCase() + cat.slice(1) %></span>
+      <span class="stat-value mono">£<%= parseFloat(total).toFixed(2) %></span>
+    </div>
+    <% }) %>
+    <% } %>
+    <div class="stat-chip stat-chip-total">
+      <span class="stat-label">Total</span>
+      <span class="stat-value mono">£<%= totalExpenses %></span>
+    </div>
+  </div>
+
+  <%# Dashboard: members %>
+  <div class="dashboard">
+
+    <div class="dashboard-main">
+      <div class="section-header">
+        <h2 class="section-title">Members</h2>
+        <span class="section-count"><%= members.filter(m => !m.is_guest).length %> member<%= members.filter(m => !m.is_guest).length !== 1 ? 's' : '' %></span>
+        <form
+          action="/session/close"
+          method="POST"
+          style="margin-left:auto"
+          onsubmit="return confirm('Close session? This will archive a snapshot and reset all joints, amounts, and expenses.')"
+        >
+          <button type="submit" class="btn btn-sm btn-danger">Close session</button>
+        </form>
+      </div>
+
+      <%# Log joint — primary action %>
+      <details class="log-joint-details">
+        <summary class="btn btn-primary log-joint-toggle">+ Log joint</summary>
+        <form action="/joints/log" method="POST" class="log-joint-form">
+          <p class="log-joint-hint">Select everyone who smoked this joint — each gets an equal share (1/N)</p>
+          <div class="log-joint-members">
+            <% members.forEach(member => { %>
+            <label class="log-joint-check">
+              <input type="checkbox" name="participants" value="<%= member.id %>">
+              <span class="log-joint-name"><%= member.name %><% if (member.is_guest) { %> <span class="badge badge-guest">guest</span><% } %></span>
+            </label>
+            <% }) %>
+          </div>
+          <button type="submit" class="btn btn-primary">Log it</button>
+        </form>
+      </details>
+
+      <div class="members-grid">
+        <% members.forEach(member => { %>
+        <div class="member-card">
+
+          <%# Header: name + delete + (guest) socialise toggle %>
+          <div class="member-card-header">
+            <span class="member-name">
+              <%= member.name %>
+              <% if (member.is_guest) { %><span class="badge badge-guest">guest</span><% } %>
+            </span>
+            <% if (!member.is_guest && member.joints === 0) { %>
+            <form action="/members/<%= member.id %>/delete" method="POST" class="inline-form">
+              <button
+                type="submit"
+                class="btn-icon"
+                title="Remove member"
+                onclick="return confirm('Remove <%= member.name %>?')"
+              >×</button>
+            </form>
+            <% } %>
+            <% if (member.is_guest && member.netOwed > 0.005) { %>
+            <%   const nonGuestMembers = members.filter(m => !m.is_guest); %>
+            <% if (nonGuestMembers.length > 0) { %>
+            <details class="socialise-details">
+              <summary class="btn-icon socialise-toggle" title="Split £<%= member.netOwed.toFixed(2) %> guest balance among members">↔</summary>
+              <form
+                action="/members/guest/socialise"
+                method="POST"
+                class="socialise-form"
+              >
+                <p class="socialise-hint">
+                  Split £<strong class="mono"><%= member.netOwed.toFixed(2) %></strong> guest balance — adjust percentages to total 100%.
+                </p>
+                <div class="socialise-members">
+                  <% nonGuestMembers.forEach((m, i, arr) => { %>
+                  <%   const defaultPct = parseFloat((100 / arr.length).toFixed(1)); %>
+                  <%   const lastPct    = i === arr.length - 1 ? parseFloat((100 - defaultPct * (arr.length - 1)).toFixed(1)) : defaultPct; %>
+                  <div class="socialise-row">
+                    <span class="socialise-name"><%= m.name %></span>
+                    <div class="socialise-pct-wrap">
+                      <input
+                        type="number"
+                        name="pct_<%= m.id %>"
+                        class="socialise-pct-input"
+                        min="0"
+                        max="100"
+                        step="any"
+                        value="<%= lastPct %>"
+                        required
+                      >
+                      <span class="socialise-pct-sym">%</span>
+                    </div>
+                  </div>
+                  <% }) %>
+                </div>
+                <div class="socialise-footer">
+                  <span class="socialise-total-label">Total: <span class="socialise-total mono">—</span></span>
+                  <button
+                    type="submit"
+                    class="btn btn-sm btn-danger"
+                    onclick="return confirm('Split £<%= member.netOwed.toFixed(2) %> guest balance? This will adjust member joints.')"
+                  >Socialise</button>
+                </div>
+              </form>
+            </details>
+            <% } %>
+            <% } %>
+          </div>
+
+          <%# Joints counter %>
+          <div class="joints-row">
+            <form action="/members/<%= member.id %>/joints/dec" method="POST" class="inline-form">
+              <button type="submit" class="joint-btn joint-btn-dec" title="−¼ joint">−</button>
+            </form>
+            <span class="joint-count"><%= parseFloat(member.joints.toFixed(2)) %></span>
+            <form action="/members/<%= member.id %>/joints/inc" method="POST" class="inline-form">
+              <button type="submit" class="joint-btn joint-btn-inc" title="+¼ joint">+</button>
+            </form>
+
+            <details class="bulk-joints">
+              <summary class="bulk-toggle">bulk</summary>
+              <form action="/members/<%= member.id %>/joints/bulk" method="POST" class="bulk-form">
+                <input
+                  type="number"
+                  name="amount"
+                  min="0.01"
+                  max="999"
+                  step="any"
+                  placeholder="N"
+                  class="bulk-input"
+                  required
+                >
+                <button type="submit" name="operation" value="add" class="btn btn-sm">+N</button>
+                <button type="submit" name="operation" value="subtract" class="btn btn-sm btn-danger">−N</button>
+              </form>
+            </details>
+          </div>
+
+          <%# Auto-calculated balance %>
+          <div class="member-balance">
+            <% if (member.netOwed > 0.005) { %>
+              <span class="balance-label">Owes</span>
+              <span class="balance-amount balance-owes">£<%= member.netOwed.toFixed(2) %></span>
+            <% } else if (member.netOwed < -0.005) { %>
+              <span class="balance-label">Owed</span>
+              <span class="balance-amount balance-owed">£<%= Math.abs(member.netOwed).toFixed(2) %></span>
+            <% } else { %>
+              <span class="balance-label">Balance</span>
+              <span class="balance-amount balance-even">Even</span>
+            <% } %>
+            <span class="balance-detail">
+              <%= parseFloat(member.joints.toFixed(2)) %> × £<%= pricePerJoint %> − £<%= member.paidAmount.toFixed(2) %> paid
+            </span>
+          </div>
+
+
+        </div>
+        <% }) %>
+      </div>
+
+      <%# Add member %>
+      <details class="add-member-details">
+        <summary class="btn btn-ghost add-member-toggle">+ Add member</summary>
+        <form action="/members" method="POST" class="add-member-form">
+          <div class="member-input-wrap">
+            <input
+              type="text"
+              name="memberName"
+              id="member-name-input"
+              placeholder="<%= inactiveMembers.length > 0 ? 'Type or pick a past member' : 'Member name' %>"
+              class="input-full"
+              required
+              maxlength="50"
+              autocomplete="off"
+            >
+            <% if (inactiveMembers.length > 0) { %>
+            <ul class="member-dropdown" id="member-dropdown">
+              <% inactiveMembers.forEach(m => { %>
+              <li class="member-dropdown-item" data-value="<%= m.name %>"><%= m.name %></li>
+              <% }) %>
+            </ul>
+            <% } %>
+          </div>
+          <button type="submit" class="btn btn-primary">Add</button>
+        </form>
+      </details>
+    </div>
+
+  </div>
+</main>
+
+<%- include('partials/foot') %>

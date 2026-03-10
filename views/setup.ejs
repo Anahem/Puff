@@ -1,0 +1,48 @@
+<%- include('partials/head', { pageTitle: 'Setup' }) %>
+
+<main class="auth-container">
+  <div class="auth-card">
+    <h1 class="auth-title">First-time setup</h1>
+
+    <% if (hash) { %>
+      <div class="form-success">Password hash generated. Copy it into your <code>.env</code> file:</div>
+      <p class="hint" style="margin-bottom:0.5rem">Add this line to <code>.env</code>, then restart the server:</p>
+      <div class="hash-display">PASSWORD_HASH=<%= hash %></div>
+      <p class="hint" style="margin-top:0.75rem">After restarting, visit <a href="/login">/login</a> to sign in.</p>
+    <% } else { %>
+      <p class="auth-hint">Create a password for your Puff App. You'll need to add the generated hash to your <code>.env</code> file.</p>
+
+      <% if (error) { %>
+        <div class="form-error"><%= error %></div>
+      <% } %>
+
+      <form method="POST" action="/setup">
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input
+            type="password"
+            id="password"
+            name="password"
+            class="input-full"
+            autofocus
+            minlength="8"
+            placeholder="At least 8 characters"
+          >
+        </div>
+        <div class="form-group">
+          <label for="confirm">Confirm password</label>
+          <input
+            type="password"
+            id="confirm"
+            name="confirm"
+            class="input-full"
+            placeholder="Repeat password"
+          >
+        </div>
+        <button type="submit" class="btn btn-primary btn-full">Generate hash</button>
+      </form>
+    <% } %>
+  </div>
+</main>
+
+<%- include('partials/foot') %>

@@ -1,0 +1,32 @@
+<%- include('partials/head', { pageTitle: 'Login' }) %>
+
+<main class="auth-container">
+  <div class="auth-card">
+    <h1 class="auth-title">› Puff</h1>
+
+    <% if (setupMode) { %>
+      <p class="auth-hint">No password set yet. <a href="/setup">Create one →</a></p>
+    <% } else { %>
+      <% if (error) { %>
+        <div class="form-error"><%= error %></div>
+      <% } %>
+      <form method="POST" action="/login">
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input
+            type="password"
+            id="password"
+            name="password"
+            class="input-full"
+            autofocus
+            autocomplete="current-password"
+            placeholder="Enter password"
+          >
+        </div>
+        <button type="submit" class="btn btn-primary btn-full">Sign in</button>
+      </form>
+    <% } %>
+  </div>
+</main>
+
+<%- include('partials/foot') %>

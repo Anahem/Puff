@@ -1,0 +1,12 @@
+<%- include('partials/head', { pageTitle: 'Error' }) %>
+<%- include('partials/nav') %>
+
+<main class="container container-narrow">
+  <div class="empty-state">
+    <h1>Oops</h1>
+    <p><%= message %></p>
+    <a href="/" class="btn btn-primary">Go home</a>
+  </div>
+</main>
+
+<%- include('partials/foot') %>
